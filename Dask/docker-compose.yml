@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  dask-scheduler:
+    image: daskdev/dask:latest
+    command: dask-scheduler
+    networks:
+      - my-overlay
+    ports:
+      - "8786:8786"  # Puerto para la comunicación de los workers
+      - "8787:8787"  # Puerto para la interfaz web de Dask
+    volumes:
+      - ./data:/data  # Montar el volumen para compartir datos
+
+  dask-worker:
+    image: daskdev/dask:latest
+    command: dask-worker dask-scheduler:8786
+    networks:
+      - my-overlay
+    environment:
+      - DASK_SCHEDULER_ADDRESS=tcp://dask-scheduler:8786
+    volumes:
+      - ./data:/data  # Montar el volumen para compartir datos
+
+  data-prep:
+    image: ubuntu:latest  # Usar Ubuntu para el script de descarga
+    networks:
+      - my-overlay
+    command: ["sh", "-c", "apt-get update && apt-get install -y wget unzip && wget https://files.grouplens.org/datasets/movielens/ml-100k.zip && unzip ml-100k.zip -d /data && rm ml-100k.zip"]
+    volumes:
+      - ./data:/data  # Montar el volumen para guardar los datos
+    depends_on:
+      - dask-scheduler  # Asegurarse de que el scheduler esté activo
+
+networks:
+  my-overlay:
+    external: true
